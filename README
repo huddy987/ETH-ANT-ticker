@@ -1,0 +1,14 @@
+Running instructions:
+
+1. Import this project to PlatformIO
+2. Prior to beginning, flash the S212 softdevice to your board.
+3. Drop the ANT_s212_nrf52_7.0.1.API folder in the ANT_softdevice directory.
+4. Replace the nrf52_xxaa.ld at C:\Users\<you>\platformio\packages\framework-arduinonordicnrf5\cores\nRF5\SDK\components\toolchain\gcc
+   with the one found at link/nrf52_xxaa.ld.
+5. Edit C:\Users\<you>\platformio\platforms\nordicnrf52\builder\main.py:
+      Need to edit the line where the nrfjprog flags are set to not erase the entire SoC (or else we erase the softdevice!!!)
+      For me it is line 312, change the conditional to only be sectorerase and never chiperase.
+6. Build and upload the project using build and upload in platformio.
+
+Additional notes:
+   - The platformio debugger will not work. For some reason it gets stuck in the softdevice calls.
