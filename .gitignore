@@ -4,5 +4,6 @@
 .vscode/launch.json
 .vscode/ipch
 .vscode/extensions.json
-ANT_softdevice/*
+ANT_softdevice/ANT_s212_nrf52_7.0.1.hex
+ANT_softdevice/ANT_s212_nrf52_7.0.1.API/include
 .travis.yml
