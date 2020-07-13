@@ -1,5 +1,6 @@
 #include <Arduino.h>            // Arduino functionality
 #include "hardwareconfig.h"     // hardware pin defines
+#include "commonmacros.h"
 #include "ANTNode.h"
 
 // Global ANT class
@@ -13,11 +14,8 @@ ANTNode ANT;
  */
 void setup()
 {
-    Serial.begin(115200); // init serial at 115200bps
-#ifdef DEBUG
     pinMode(DEBUG_LED, OUTPUT);
-#endif // DEBUG
-
+    SERIAL_BEGIN(115200); // Start serial on USB CDC at 115200bps
     // Startup ANT
     if (ANT.start()) // nonzero return from nordic API indicates failure
     {
@@ -27,7 +25,7 @@ void setup()
 
     // TODO: Init the matrix
 
-    Serial.println("Startup Complete");
+    SERIAL_PRINTLN("Startup Complete");
 }
 
 /**@brief Function which loops continually

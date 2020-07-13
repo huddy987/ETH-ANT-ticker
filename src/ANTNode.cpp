@@ -1,6 +1,7 @@
-#include <Arduino.h>            // Arduino functionality
-#include "hardwareconfig.h"     // hardware pin defines
-#include "antNode.h"
+#include <Arduino.h>
+#include "hardwareconfig.h"
+#include "commonmacros.h"
+#include "ANTNode.h"
 // Softdevice includes
 #include "ant_interface.h"
 #include "ant_parameters.h"
@@ -12,17 +13,7 @@
 static void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 {
     // If debug, we loop forever. If in release, reset the device
-#ifdef DEBUG
-    while(1)
-    {
-        Serial.println("In app fault loop!");
-        digitalWrite(DEBUG_LED, LOW);
-        delay(500);
-        digitalWrite(DEBUG_LED, HIGH);
-    }
-#else
-    sd_nvic_SystemReset();
-#endif // DEBUG
+    FATAL_ERROR("In app fault loop!");
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -37,23 +28,14 @@ uint32_t ANTNode::start()
 
     // Enable the softdevice
     err_code = sd_softdevice_enable(&(this->clock_lf_cfg), app_error_fault_handler, ANT_LICENSE_KEY);
-    if (err_code != NRF_SUCCESS)
-    {
-        return err_code; // Failed to init softdevice
-    }
+    ERROR_CODE_CHECK(err_code); // Check if softdevice init failed
 
     // Init ANT channel
     err_code = channel_init(&(this->channel_config));
-    if(err_code != NRF_SUCCESS)
-    {
-        return err_code; // Failed ANT channel init
-    }
+    ERROR_CODE_CHECK(err_code); // Check if ANT init failed
 
     err_code = sd_ant_channel_open(ucChannelNumber);
-    if (err_code != NRF_SUCCESS)
-    {
-        return err_code; // Failed ANT channel open
-    }
+    ERROR_CODE_CHECK(err_code); // Check if failed to open ANT channel
 
     return err_code;
 }
@@ -72,12 +54,7 @@ uint32_t ANTNode::get_bcst_buffer(uint8_t * aucPayload)
     uint8_t ucNextMesgID = ant_evt.message.stMessage.uFramedData.stFramedData.ucMesgID;
 
     err_code = sd_ant_event_get(&ant_evt.channel, &ant_evt.event, ant_evt.message.aucMessage);
-    if (err_code != NRF_SUCCESS)
-    {
-        /*Serial.print("Failed to get ant event: ");
-        Serial.println(err_code);*/
-        return err_code; // Failed to get ant event :(
-    }
+    ERROR_CODE_CHECK(err_code);
 
     /*Serial.print("Channel: ");
     Serial.println(ant_evt.channel);
@@ -115,30 +92,22 @@ uint32_t ANTNode::channel_init(ant_channel_config_t const * pstConfig)
                                      pstConfig->channel_type,
                                      pstConfig->network_number,
                                      pstConfig->ext_assign);
-    if(err_code != NRF_SUCCESS)
-    {
-        return err_code;
-    }
+    ERROR_CODE_CHECK(err_code);
 
     // Set Channel ID.
     err_code = sd_ant_channel_id_set(pstConfig->channel_number,
                                      pstConfig->device_number,
                                      pstConfig->device_type,
                                      pstConfig->transmission_type);
-    if(err_code != NRF_SUCCESS)
-    {
-        return err_code;
-    }
+    ERROR_CODE_CHECK(err_code);
 
     // Set Channel RF frequency.
     err_code = sd_ant_channel_radio_freq_set(pstConfig->channel_number, pstConfig->rf_freq);
-    if(err_code != NRF_SUCCESS)
-    {
-        return err_code;
-    }
+    ERROR_CODE_CHECK(err_code);
 
     // Set Channel period.
     err_code = sd_ant_channel_period_set(pstConfig->channel_number, pstConfig->channel_period);
+    ERROR_CODE_CHECK(err_code);
 
     return err_code;
 }
