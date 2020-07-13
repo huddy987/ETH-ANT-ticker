@@ -14,7 +14,10 @@
 
 #define DEBUG_LED_BLINK                                 \
 {                                                       \
-
+    digitalWrite(DEBUG_LED, LOW);                       \
+    delay(250);                                         \
+    digitalWrite(DEBUG_LED, HIGH);                      \
+    delay(250);                                         \
 }
 
 // This implementation waits for USB CDC to become available before continuing.
@@ -24,10 +27,7 @@
     Serial.begin(baud);                                 \
     while(!Serial)                                      \
     {                                                   \
-        digitalWrite(DEBUG_LED, LOW);                   \
-        delay(250);                                     \
-        digitalWrite(DEBUG_LED, HIGH);                  \
-        delay(250);                                     \
+        DEBUG_LED_BLINK                                 \
     }                                                   \
 }
 #define SERIAL_PRINT(...)   Serial.print(__VA_ARGS__);
@@ -39,7 +39,7 @@
     while(1)                                            \
     {                                                   \
         SERIAL_PRINTLN(__VA_ARGS__);                    \
-        delay(500);                                     \
+        DEBUG_LED_BLINK                                 \
     }                                                   \
 }
 #else // Release mode macros
