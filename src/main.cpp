@@ -14,8 +14,8 @@ ANTNode ANT;
  */
 void setup()
 {
-    pinMode(DEBUG_LED, OUTPUT);
     SERIAL_BEGIN(115200); // Start serial on USB CDC at 115200bps
+
     // Startup ANT
     if (ANT.start()) // nonzero return from nordic API indicates failure
     {
@@ -32,9 +32,6 @@ void setup()
  */
 void loop()
 {
-#ifdef DEBUG
-    digitalWrite(DEBUG_LED, LOW);
-#endif // DEBUG
     uint8_t aucPayload[ANT_STANDARD_DATA_PAYLOAD_SIZE];
     // For now, just loop and check that the broadcast buffer is being updated and fetched
     if (ANT.get_bcst_buffer(aucPayload) == 0)
@@ -45,7 +42,9 @@ void loop()
         {
             payload_sum += aucPayload[i];
         }
-        Serial.print("Payload Received with value: ");
-        Serial.println(payload_sum);
+        SERIAL_PRINTLN("Payload Received with value: ");
+        SERIAL_PRINTLN(payload_sum);
     }
+    //delay(100);
+    //Serial.println(matrix.getFrameCount());
 }

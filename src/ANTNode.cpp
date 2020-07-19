@@ -7,8 +7,9 @@
 #include "ant_parameters.h"
 #include "nrf_sdm.h"
 #include "nrf_error.h"
+#include "nrfx_power.h"
 
-/**@Brief function to be called when an application fault occurs
+/**@Brief Function to be called when an application fault occurs
  */
 static void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 {
@@ -26,9 +27,19 @@ uint32_t ANTNode::start()
 {
     uint32_t err_code = NRF_SUCCESS;
 
+    // Must release NRF_POWER before enabling the SD
+    nrfx_power_usbevt_disable();
+    nrfx_power_usbevt_uninit();
+    nrfx_power_uninit();
+
     // Enable the softdevice
     err_code = sd_softdevice_enable(&(this->clock_lf_cfg), app_error_fault_handler, ANT_LICENSE_KEY);
     ERROR_CODE_CHECK(err_code); // Check if softdevice init failed
+
+    // Need to reenable USB now
+    sd_power_usbdetected_enable(true);
+    sd_power_usbpwrrdy_enable(true);
+    sd_power_usbremoved_enable(true);
 
     // Init ANT channel
     err_code = channel_init(&(this->channel_config));
@@ -50,18 +61,21 @@ uint32_t ANTNode::get_bcst_buffer(uint8_t * aucPayload)
 {
     uint32_t err_code = NRF_SUCCESS;
     ant_evt_t ant_evt;
-    uint8_t * aucNextPayload = ant_evt.message.stMessage.uFramedData.stFramedData.uMesgData.stMesgData.aucPayload;
-    uint8_t ucNextMesgID = ant_evt.message.stMessage.uFramedData.stFramedData.ucMesgID;
+    uint8_t * aucNextPayload = 0;
+    uint8_t ucNextMesgID = 0;
 
     err_code = sd_ant_event_get(&ant_evt.channel, &ant_evt.event, ant_evt.message.aucMessage);
     ERROR_CODE_CHECK(err_code);
 
+    aucNextPayload = ant_evt.message.stMessage.uFramedData.stFramedData.uMesgData.stMesgData.aucPayload;
+    ucNextMesgID = ant_evt.message.stMessage.uFramedData.stFramedData.ucMesgID;
+
     /*Serial.print("Channel: ");
     Serial.println(ant_evt.channel);
     Serial.print("Event: ");
-    Serial.println(ant_evt.event);
+    Serial.println(ant_evt.event, HEX);
     Serial.print("MsgID: ");
-    Serial.println(ucNextMesgID);*/
+    Serial.println(ucNextMesgID, HEX);*/
 
     // We only care about channel 0, RX broadcast
     if ((ant_evt.channel != this->ucChannelNumber) ||

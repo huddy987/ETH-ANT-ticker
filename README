@@ -1,14 +1,14 @@
 Running instructions:
 
 1. Import this project to PlatformIO
-2. Prior to beginning, flash the S212 softdevice to your board.
-3. Drop the ANT_s212_nrf52_7.0.1.API folder in the ANT_softdevice directory.
-4. Replace the nrf52_xxaa.ld at C:\Users\<you>\platformio\packages\framework-arduinonordicnrf5\cores\nRF5\SDK\components\toolchain\gcc
-   with the one found at link/nrf52_xxaa.ld.
-5. Edit C:\Users\<you>\platformio\platforms\nordicnrf52\builder\main.py:
-      Need to edit the line where the nrfjprog flags are set to not erase the entire SoC (or else we erase the softdevice!!!)
-      For me it is line 312, change the conditional to only be sectorerase and never chiperase.
-6. Build and upload the project using build and upload in platformio.
+2. Prior to beginning, build the S340 v6.1.1 adafruit bootloader here and load it: https://github.com/huddy987/Adafruit_nRF52_Bootloader
+3. Drop the ANT_s340_nrf52840_6.1.1.API folder in the ANT_softdevice directory.
+4. Replace the linker script .platformio\packages\framework-arduinoadafruitnrf52\cores\nRF5\linker\nrf52840_s140_v6.ld with the one located
+   in the "link" folder.
+5. On line 312 of .platformio\platforms\nordicnrf52\builder\main.py remove the conditional chiperase for jlink programming
+6. Build and upload the project in platformio.
 
 Additional notes:
-   - The platformio debugger will not work. For some reason it gets stuck in the softdevice calls.
+   - The platformio debugger will not work. For some reason it gets stuck in freeRTOS and softdevice calls.
+   - For any adaptations using this approach, NRF_POWER must be released before enabling the SD or you will get
+     NRF_ERROR_SDM_INCORRECT_INTERRUPT_CONFIGURATION returned from the API

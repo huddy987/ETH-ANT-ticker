@@ -1,12 +1,12 @@
-#include <Arduino.h>            // Arduino functionality
+#ifndef ANTNODE_H
+#define ANTNODE_H
+
+#include <Arduino.h>
 // Softdevice includes
 #include "ant_interface.h"
 #include "ant_parameters.h"
 #include "nrf_sdm.h"
 #include "nrf_error.h"
-
-#ifndef ANTNODE_H
-#define ANTNODE_H
 
 /**@brief ANT channel configuration structure. From ant_channel_config.h in the SDK
  */
