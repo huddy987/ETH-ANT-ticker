@@ -1,3 +1,31 @@
+Required hardware:
+- nRF52840-DK (pca10056)
+- Adafruit 64x32 LED matrix
+- 5V, 2A power supply
+- Some cables
+
+Wiring Instructions:
+
+Wire up your matrix's power to the 5V power supply.
+
+For the pca10056:
+
+NRF52  <----> Matrix
+GND    <----> GND
+0.23   <----> G1
+0.24   <----> G2
+0.21   <----> R1
+0.22   <----> R2
+0.19   <----> B1
+0.20   <----> B2
+0.17   <----> B
+0.18   <----> D
+0.15   <----> A
+0.16   <----> C
+0.13   <----> LAT
+0.14   <----> CLK
+0.12   <----> OE
+
 Running instructions:
 
 1. Import this project to PlatformIO

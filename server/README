@@ -1,0 +1,15 @@
+PC-based ANT server. In demo mode, spoofs a price and sends it OTA via ANT every couple seconds.
+Out of demo mode, the real ETH price is sent OTA every couple minutes.
+
+Requirements:
+    - Must be run from a unix environment
+    - Requires an ANT USBm
+    - python3
+
+Usage:
+    python3 server.py
+
+No requirements.txt, should just be able to run as-is.
+
+The ANT python library is a modified version of https://github.com/Tigge/openant
+The ETH-price "getter" library is a small piece taken from https://github.com/huddy987/ETH-Price-Analyzer
