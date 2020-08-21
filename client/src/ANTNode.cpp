@@ -9,7 +9,7 @@
 #include "nrf_error.h"
 #include "nrfx_power.h"
 
-/**@Brief Function to be called when an application fault occurs
+/** @brief Function to be called when an application fault occurs
  */
 static void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 {
@@ -21,7 +21,7 @@ static void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 // Public Methods
 ///////////////////////////////////////////////////////////////////
 
-/**@brief Method for starting the antNode by enabling the softdevice and opening an ANT channel
+/** @brief Method for starting the antNode by enabling the softdevice and opening an ANT channel
  */
 uint32_t ANTNode::start()
 {
@@ -51,11 +51,11 @@ uint32_t ANTNode::start()
     return err_code;
 }
 
-/**@brief Method for getting the current ANT stack message buffer (only checks bcst data on channel 0)
+/** @brief Method for getting the current ANT stack message buffer (only checks bcst data on channel 0)
  *
- * @param[in] aucPayload: Buffer to copy the ANT message to. It is assumed that aucPayload is of size ANT_STANDARD_DATA_PAYLOAD_SIZE.
+ *  @param[in] aucPayload: Buffer to copy the ANT message to. It is assumed that aucPayload is of size ANT_STANDARD_DATA_PAYLOAD_SIZE.
  *
- * @return NRF_SUCCESS if successful, NRF error code if unsucessful
+ *  @return NRF_SUCCESS if successful, NRF error code if unsucessful
  */
 uint32_t ANTNode::get_bcst_buffer(uint8_t * aucPayload)
 {
@@ -96,7 +96,7 @@ uint32_t ANTNode::get_bcst_buffer(uint8_t * aucPayload)
 // Private Methods
 ///////////////////////////////////////////////////////////////////
 
-/**@brief Method for initializing an ANT channel
+/** @brief Method for initializing an ANT channel
  */
 uint32_t ANTNode::channel_init(ant_channel_config_t const * pstConfig)
 {

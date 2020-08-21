@@ -10,19 +10,21 @@
 ///////////////////////////////////////////////////////////////////
 #define NRF_GPIO_REGISTER_SIZE 32
 
-#define PIN_G1   3
-#define PIN_G2   2
-#define PIN_R1   29
-#define PIN_R2   4
-#define PIN_B1   28
-#define PIN_B2   11
-#define PIN_A    10
-#define PIN_B    7
-#define PIN_C    13
-#define PIN_D    9
-#define PIN_CLK  14
-#define PIN_LAT  24
-#define PIN_OE   25
+// Use all port 1 pins, some port 0 pins are dedicated so lets
+// not play around with those...
+#define PIN_R1   (NRF_GPIO_REGISTER_SIZE + 1)
+#define PIN_R2   (NRF_GPIO_REGISTER_SIZE + 2)
+#define PIN_G1   (NRF_GPIO_REGISTER_SIZE + 3)
+#define PIN_G2   (NRF_GPIO_REGISTER_SIZE + 4)
+#define PIN_B1   (NRF_GPIO_REGISTER_SIZE + 5)
+#define PIN_B2   (NRF_GPIO_REGISTER_SIZE + 6)
+#define PIN_A    (NRF_GPIO_REGISTER_SIZE + 7)
+#define PIN_B    (NRF_GPIO_REGISTER_SIZE + 8)
+#define PIN_C    (NRF_GPIO_REGISTER_SIZE + 10)
+#define PIN_D    (NRF_GPIO_REGISTER_SIZE + 11)
+#define PIN_CLK  (NRF_GPIO_REGISTER_SIZE + 12)
+#define PIN_LAT  (NRF_GPIO_REGISTER_SIZE + 13)
+#define PIN_OE   (NRF_GPIO_REGISTER_SIZE + 14)
 
 #define PIXEL_HEIGHT 32
 #define PIXEL_WIDTH 64

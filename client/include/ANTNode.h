@@ -8,7 +8,7 @@
 #include "nrf_sdm.h"
 #include "nrf_error.h"
 
-/**@brief ANT channel configuration structure. From ant_channel_config.h in the SDK
+/** @brief ANT channel configuration structure. From ant_channel_config.h in the SDK
  */
 typedef struct
 {
@@ -23,16 +23,16 @@ typedef struct
     uint8_t  network_number;        ///< Network number denoting the network key.
 } ant_channel_config_t;
 
-/**@brief ANT stack event. From nrf_sdh_ant.h in the SDK
+/** @brief ANT stack event. From nrf_sdh_ant.h in the SDK
  */
 typedef struct
 {
-    ANT_MESSAGE message;    //!< ANT Message.
-    uint8_t     channel;    //!< Channel number.
-    uint8_t     event;      //!< Event code.
+    ANT_MESSAGE message;            ///< ANT Message.
+    uint8_t     channel;            ///< Channel number.
+    uint8_t     event;              ///< Event code.
 } ant_evt_t;
 
-/**@brief Class for interfacing with the 7.0.1 S212 ANT softdevice
+/** @brief Class for interfacing with the ANT softdevice (v6.1.1)
  */
 class ANTNode
 {
