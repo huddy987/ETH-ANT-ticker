@@ -41,8 +41,6 @@ void setup()
 {
     SERIAL_BEGIN(115200); // Start serial on USB CDC at 115200bps
 
-    SERIAL_PRINTLN("Startup start");
-
     // Startup ANT
     if (ANT.start()) // nonzero return from nordic API indicates failure
     {
@@ -69,7 +67,6 @@ void setup()
 
 void loop()
 {
-    SERIAL_PRINTLN("Loop");
     // Suspended. CPU will not run loop() at all.
 }
 
