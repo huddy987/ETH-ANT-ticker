@@ -5,7 +5,6 @@
 
 #include <Arduino.h>
 #include "hardwareconfig.h"
-#include "nrf_nvic.h"
 
 /////////////////////////////////////////////////////////
 // Build type dependant macros
@@ -33,26 +32,21 @@
 #define SERIAL_PRINT(...)   Serial.print(__VA_ARGS__);
 #define SERIAL_PRINTLN(...) Serial.println(__VA_ARGS__);
 
-// Loop on fatal error with an error message
-#define FATAL_ERROR(... )                               \
-{                                                       \
-    while(1)                                            \
-    {                                                   \
-        SERIAL_PRINTLN(__VA_ARGS__);                    \
-        DEBUG_LED_BLINK                                 \
-    }                                                   \
+/* Print file and line number on assert */
+/* TODO: WE SHOULDNT BE INLINING THIS EVERYWHERE */
+#define ASSERT()                                          \
+{                                                         \
+    char message[40] = {0};                               \
+    sprintf(message, "Assert %s:%d", __FILE__, __LINE__); \
+    Serial.println(message);                              \
 }
 #else // Release mode macros
+#define DEBUG_LED_BLINK {}
 #define SERIAL_PRINTLN(...) {}
 #define SERIAL_BEGIN(baud)   {}
 #define SERIAL_PRINT(...)   {}
 #define SERIAL_PRINTLN(...) {}
-
-// On fatal error reset the device
-#define FATAL_ERROR(...)                                \
-{                                                       \
-    sd_nvic_SystemReset();                              \
-}
+#define ASSERT()
 #endif // DEBUG
 
 /////////////////////////////////////////////////////////
@@ -66,5 +60,8 @@
         return err_code;                                \
     }                                                   \
 }
+
+/* First populated byte in ANT message containing prices */
+#define ANT_MESSAGE_START_IDX 3
 
 #endif // COMMONMACROS_H

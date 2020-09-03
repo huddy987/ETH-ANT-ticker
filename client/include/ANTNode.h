@@ -40,7 +40,7 @@ class ANTNode
         uint32_t start();
         uint32_t get_bcst_buffer(uint8_t * aucPayload);
     private:
-        // ANT Channel config
+        /* ANT Channel config */
         uint8_t ucChannelNumber = 0;
         ant_channel_config_t channel_config =
         {
@@ -55,7 +55,7 @@ class ANTNode
             .network_number    = 0,
         };
 
-        // NRF52 clock config
+        /* NRF52 clock config */
         nrf_clock_lf_cfg_t const clock_lf_cfg =
         {
             .source       = NRF_CLOCK_LF_SRC_XTAL,
@@ -64,7 +64,12 @@ class ANTNode
             .accuracy     = NRF_CLOCK_LF_ACCURACY_20_PPM
         };
 
+        /* Previous buffer */
+        uint8_t aucPrevBuf[ANT_STANDARD_DATA_PAYLOAD_SIZE] = {0};
+
         uint32_t channel_init(ant_channel_config_t const * pstConfig);
+
+        bool is_duplicate_data(uint8_t * aucPayload);
 };
 
 #endif // ANTNODE_H

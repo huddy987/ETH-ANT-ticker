@@ -13,8 +13,12 @@
  */
 static void app_error_fault_handler(uint32_t id, uint32_t pc, uint32_t info)
 {
-    // If debug, we loop forever. If in release, reset the device
-    FATAL_ERROR("In app fault loop!");
+    /* Loop forever and blink LED */
+    while(1)
+    {
+        SERIAL_PRINTLN("In app fault loop!");
+        DEBUG_LED_BLINK;
+    }
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -77,10 +81,16 @@ uint32_t ANTNode::get_bcst_buffer(uint8_t * aucPayload)
     Serial.print("MsgID: ");
     Serial.println(ucNextMesgID, HEX);*/
 
-    // We only care about channel 0, RX broadcast
+    /* We only care about channel 0, RX broadcast */
     if ((ant_evt.channel != this->ucChannelNumber) ||
         (ant_evt.event != EVENT_RX) ||
         (ucNextMesgID != MESG_BROADCAST_DATA_ID))
+    {
+        return NRF_ERROR_NOT_FOUND;
+    }
+
+    /* We only care if this is new data (ignore duplicate prices) */
+    if (this->is_duplicate_data(aucNextPayload))
     {
         return NRF_ERROR_NOT_FOUND;
     }
@@ -124,4 +134,34 @@ uint32_t ANTNode::channel_init(ant_channel_config_t const * pstConfig)
     ERROR_CODE_CHECK(err_code);
 
     return err_code;
+}
+
+/** @brief Method for checking if 2 consequtive ANT buffers contain the same data
+ *
+ *  @param[in]aucPayload: Next ANT buffer received from the radio.
+ *                        It is assumed that aucPayload is of size ANT_STANDARD_DATA_PAYLOAD_SIZE.
+ *
+ *  @return true if duplicate data is found, else false.
+ */
+bool ANTNode::is_duplicate_data(uint8_t * aucPayload)
+{
+    bool rv = false;
+
+    for(uint8_t i = 0; i < ANT_STANDARD_DATA_PAYLOAD_SIZE; i++)
+    {
+        if (this->aucPrevBuf[i] != aucPayload[i])
+        {
+            break;
+        }
+        if (i == (ANT_STANDARD_DATA_PAYLOAD_SIZE - 1))
+        {
+            rv = true;
+            break;
+        }
+    }
+
+    /* Copy the current buffer for the comparison next time */
+    memcpy(this->aucPrevBuf, aucPayload, sizeof(this->aucPrevBuf));
+
+    return rv;
 }
