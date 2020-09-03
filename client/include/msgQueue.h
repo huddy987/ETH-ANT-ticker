@@ -39,9 +39,9 @@ class msgQueue
         msgQueue()
         {
             /* Attempt to create the read and write mutex */
-            xWriteSemaphore = xSemaphoreCreateMutex();
-            xReadSemaphore = xSemaphoreCreateMutex();
-            if ((xWriteSemaphore == NULL) || (xReadSemaphore == NULL))
+            xWriteMutex = xSemaphoreCreateMutex();
+            xReadMutex = xSemaphoreCreateMutex();
+            if ((xWriteMutex == NULL) || (xReadMutex == NULL))
             {
                 /* ASSERT, not enough space on the heap!! */
                 ASSERT();
@@ -60,8 +60,8 @@ class msgQueue
         msg_queue_t stMsgQueue = {0};
 
         /* Mutexes for read/write thread safety */
-        SemaphoreHandle_t xWriteSemaphore;
-        SemaphoreHandle_t xReadSemaphore;
+        SemaphoreHandle_t xWriteMutex;
+        SemaphoreHandle_t xReadMutex;
 };
 
 #endif // MSG_QUEUE_H

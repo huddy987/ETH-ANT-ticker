@@ -25,7 +25,7 @@ bool msgQueue::read(message_t * pstMsgOut)
         return false;
     }
 
-    if (xSemaphoreTake(this->xReadSemaphore, portMAX_DELAY) != pdTRUE)
+    if (xSemaphoreTake(this->xReadMutex, portMAX_DELAY) != pdTRUE)
     {
         /* Could not obtain the semaphore. This is not expected under normal circumstances */
         ASSERT();
@@ -35,7 +35,7 @@ bool msgQueue::read(message_t * pstMsgOut)
     *pstMsgOut = this->stMsgQueue.stMessageBuf[this->stMsgQueue.ucReadIdx];
     this->stMsgQueue.ucReadIdx = (++(this->stMsgQueue.ucReadIdx) % MESSAGE_QUEUE_SIZE);
 
-    xSemaphoreGive(this->xReadSemaphore);
+    xSemaphoreGive(this->xReadMutex);
 
     return true;
 }
@@ -55,7 +55,7 @@ bool msgQueue::write(message_t * pstMsgIn)
         return false;
     }
 
-    if(xSemaphoreTake(this->xWriteSemaphore, portMAX_DELAY) != pdTRUE)
+    if(xSemaphoreTake(this->xWriteMutex, portMAX_DELAY) != pdTRUE)
     {
         /* Could not obtain the semaphore. This is not expected under normal circumstances */
         ASSERT();
@@ -65,7 +65,7 @@ bool msgQueue::write(message_t * pstMsgIn)
     memcpy(&(this->stMsgQueue.stMessageBuf[this->stMsgQueue.ucWriteIdx]), pstMsgIn, sizeof(message_buf_t));
     this->stMsgQueue.ucWriteIdx = (++(this->stMsgQueue.ucWriteIdx) % MESSAGE_QUEUE_SIZE);
 
-    xSemaphoreGive(this->xWriteSemaphore);
+    xSemaphoreGive(this->xWriteMutex);
 
     return true;
 }
