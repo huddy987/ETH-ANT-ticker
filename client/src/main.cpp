@@ -28,16 +28,56 @@ static statTracker stats;
 //Adafruit_Protomatter matrix(PIXEL_WIDTH, 4, 1, pucRGBPins, 4, pucAddrList, PIN_CLK, PIN_LAT, PIN_OE, false);
 
 // Task defines
-#define ANT_STACK_SZ          (256*4)
-#define MATRIX_STACK_SZ       (256*4)
-static TaskHandle_t           _ANTHandle;
-static void                   ANT_task(void * pArg);
-static TaskHandle_t           _matrixHandle;
-static void                   matrix_task(void * pArg);
+#define ANT_STACK_SZ                   (256*4)
+#define MATRIX_STACK_SZ                (256*4)
+#define INTERRUPT_HNDLR_STACK_SZ       (256*2)
+static TaskHandle_t                    _ANTHandle;
+static void                            ANT_task(void * pArg);
+static TaskHandle_t                    _matrixHandle;
+static void                            matrix_task(void * pArg);
+static TaskHandle_t                    _interruptHandlerHandle;
+static void                            interrupt_handler_task(void *pArg);
+
+// Variables related to interrupts
+static SemaphoreHandle_t xBinSemaphoreButton = NULL;
+static message_id_t nextMessage = INVALID;
+
+// Forward declarations
+void setup_interrupts();
+void start_tasks();
 
 // TODO:
 // https://platformio.org/lib/show/13/Adafruit%20GFX%20Library/headers
 // https://platformio.org/lib/show/587/RGB%20matrix%20Panel
+
+///////////////////////////////////////////////////////////////////////
+//INTERRUPTS
+///////////////////////////////////////////////////////////////////////
+void reset_IRQHandler()
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    nextMessage = RESET;
+    xSemaphoreGiveFromISR(xBinSemaphoreButton, &xHigherPriorityTaskWoken);
+}
+
+void on_IRQHandler()
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    nextMessage = ON;
+    xSemaphoreGiveFromISR(xBinSemaphoreButton, &xHigherPriorityTaskWoken);
+}
+
+void off_IRQHandler()
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    nextMessage = OFF;
+    xSemaphoreGiveFromISR(xBinSemaphoreButton, &xHigherPriorityTaskWoken);
+}
+
+
+///////////////////////////////////////////////////////////////////////
+//FUNCTIONS
+///////////////////////////////////////////////////////////////////////
 
 /** @brief Function to setup the board
  */
@@ -60,9 +100,11 @@ void setup()
         while(1); // Matrix will be unuseable, don't continue
     }*/
 
-    // Create a tasks for ANT and the matrix
-    xTaskCreate(ANT_task, "ANT", ANT_STACK_SZ, NULL, TASK_PRIO_LOW, &_ANTHandle);
-    xTaskCreate(matrix_task, "Matrix", MATRIX_STACK_SZ, NULL, TASK_PRIO_LOW, &_matrixHandle);
+    // Setup Interrupts
+    setup_interrupts();
+
+    // Create tasks
+    start_tasks();
 
     /* Suspend Loop() to save power, since we didn't have any code there */
     /* Need to not suspend in DEBUG mode since the looptask periodically checks for serial events */
@@ -71,6 +113,39 @@ void setup()
     #endif
 
     SERIAL_PRINTLN("Startup Complete\n");
+}
+
+/**  @brief Function to setup interrupts
+*/
+void setup_interrupts()
+{
+    /* Setup binary semaphore used in the interrupts */
+    xBinSemaphoreButton = xSemaphoreCreateBinary();
+
+    if (xBinSemaphoreButton == NULL)
+    {
+        /* One of the semaphores failed to be created (ran out of room on the heap!!) */
+        ASSERT();
+    }
+
+    /* Setup buttons as inputs */
+    pinMode(BUTTON_RESET, INPUT_PULLUP);
+    pinMode(BUTTON_ON, INPUT_PULLUP);
+    pinMode(BUTTON_OFF, INPUT_PULLUP);
+
+    /* Attach interrupts to buttons */
+    attachInterrupt(BUTTON_RESET, reset_IRQHandler, FALLING);
+    attachInterrupt(BUTTON_ON, on_IRQHandler, FALLING);
+    attachInterrupt(BUTTON_OFF, off_IRQHandler, FALLING);
+}
+
+/** @brief Function for starting tasks
+*/
+void start_tasks()
+{
+    xTaskCreate(ANT_task, "ANT", ANT_STACK_SZ, NULL, TASK_PRIO_LOW, &_ANTHandle);
+    xTaskCreate(matrix_task, "Matrix", MATRIX_STACK_SZ, NULL, TASK_PRIO_LOW, &_matrixHandle);
+    xTaskCreate(interrupt_handler_task, "Interrupt Handler", INTERRUPT_HNDLR_STACK_SZ, NULL, TASK_PRIO_LOW, &_interruptHandlerHandle);
 }
 
 void loop()
@@ -113,7 +188,7 @@ void matrix_task(void * pArgs)
 {
     (void)pArgs; /* Supress compiler complaints */
     message_t stNextMsg = {0}; /* Struct to copy out of the message queue */
-    ETH_msg_t stNextETHPrice = {0}; /* Struct to copy out of stat tracker */
+    ETH_msg_t stNextETHPrice; /* Struct to copy out of stat tracker */
 
     // TODO: Matrix doesn't work yet...just read the message queue and print to serial
     while(1)
@@ -151,6 +226,19 @@ void matrix_task(void * pArgs)
             {
                 /* Reset the ETH price stats */
                 stats.reset();
+                SERIAL_PRINTLN("Received Reset\n");
+                break;
+            }
+            case ON:
+            {
+                // TODO: If the matrix is off, turn it on
+                SERIAL_PRINTLN("Received On\n");
+                break;
+            }
+            case OFF:
+            {
+                // TODO: If the matrix is on, turn it off
+                SERIAL_PRINTLN("Received Off\n");
                 break;
             }
             case INVALID:
@@ -203,5 +291,34 @@ void matrix_task(void * pArgs)
         //Serial.print("Refresh FPS = ~");
         //Serial.println(matrix.getFrameCount());
         //delay(1000);
+    }
+}
+
+/** @brief Task which handles receiving interrupts to forward to other threads
+ */
+void interrupt_handler_task(void * pArgs)
+{
+    (void)pArgs; /* Supress compiler complaints */
+    message_t stNextMsg = {0}; /* Struct to copy into the message queue */
+
+    while(true)
+    {
+        if (xSemaphoreTake(xBinSemaphoreButton, portMAX_DELAY) == pdTRUE)
+        {
+            /* Check if we are about to push an invalid message */
+            if(nextMessage == INVALID)
+            {
+                ASSERT();
+            }
+
+            /* Push the next event into the queue */
+            stNextMsg.messageId = nextMessage;
+            messages.write(&stNextMsg);
+
+            /* Do this so we can be sure we aren't somehow pushing stale data
+               into the queue. We protect with the assert above
+            */
+            nextMessage = INVALID;
+        }
     }
 }

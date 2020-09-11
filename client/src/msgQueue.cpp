@@ -62,7 +62,7 @@ bool msgQueue::write(message_t * pstMsgIn)
         return false;
     }
 
-    memcpy(&(this->stMsgQueue.stMessageBuf[this->stMsgQueue.ucWriteIdx]), pstMsgIn, sizeof(message_buf_t));
+    memcpy(&(this->stMsgQueue.stMessageBuf[this->stMsgQueue.ucWriteIdx]), pstMsgIn, sizeof(message_t));
     this->stMsgQueue.ucWriteIdx = (++(this->stMsgQueue.ucWriteIdx) % MESSAGE_QUEUE_SIZE);
 
     xSemaphoreGive(this->xWriteMutex);

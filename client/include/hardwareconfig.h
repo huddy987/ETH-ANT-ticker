@@ -3,7 +3,12 @@
 #define HARDWARECONFIG_H
 
 // Debug LED
-#define DEBUG_LED PIN_LED1
+#define DEBUG_LED     PIN_LED1
+
+// Button defines
+#define BUTTON_RESET  PIN_BUTTON1
+#define BUTTON_OFF    PIN_BUTTON2
+#define BUTTON_ON     PIN_BUTTON3
 
 ///////////////////////////////////////////////////////////////////
 // Matrix Defines

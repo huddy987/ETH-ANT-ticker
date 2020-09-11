@@ -14,6 +14,8 @@ enum message_id_t
 {
     PRICE,
     RESET,
+    ON,
+    OFF,
     INVALID
 };
 

@@ -56,7 +56,9 @@ bool statTracker::write_current_ETH_price(float * pfETHPriceIn)
  */
 void statTracker::reset()
 {
-    this->stETHStats = {0};
+    this->stETHStats.fCurrentETHPrice = 0;
+    this->stETHStats.fLastETHPrice = 0;
+    this->stETHStats.ePriceChange = PRICE_NEUTRAL;
 }
 
 ///////////////////////////////////////////////////////////////////

@@ -4,7 +4,7 @@
 /* Enum for tracking how the price has changed since last time */
 enum eth_price_change_t
 {
-    PRICE_INVALID = 0, /* So when we zero out the struct this is set */
+    PRICE_INVALID = 0,
     PRICE_UP,
     PRICE_NEUTRAL,
     PRICE_DOWN
@@ -14,9 +14,9 @@ enum eth_price_change_t
  */
 typedef struct
 {
-    float fCurrentETHPrice;
-    float fLastETHPrice;
-    eth_price_change_t ePriceChange;
+    float fCurrentETHPrice = 0;
+    float fLastETHPrice = 0;
+    eth_price_change_t ePriceChange = PRICE_NEUTRAL;
 } ETH_msg_t;
 
 /** @brief Class for tracking ETH stats
@@ -30,7 +30,7 @@ class statTracker
     private:
         /* Tolerance for the "neutral" case */
         const float fNeutralTolerance = 1.005;
-        ETH_msg_t stETHStats = {0};
+        ETH_msg_t stETHStats;
         eth_price_change_t get_price_change(float * pfETHPriceIn);
 };
 
