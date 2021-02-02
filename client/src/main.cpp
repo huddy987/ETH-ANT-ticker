@@ -5,6 +5,7 @@
 #include "msgQueue.h"
 #include "statTracker.h"
 #include "FreeRTOS.h"
+#include "queue.h"
 #include "nrf_soc.h"
 //#include <Wire.h>
 //#include <SPI.h>
@@ -17,9 +18,6 @@
 
 // Global ANT object
 static ANTNode ANT;
-
-// Global message queue object
-static msgQueue messages;
 
 // Global ETH price stat tracker
 static statTracker stats;
@@ -38,10 +36,14 @@ static void                            matrix_task(void * pArg);
 static TaskHandle_t                    _interruptHandlerHandle;
 static void                            interrupt_handler_task(void *pArg);
 
+// Shared message queue handle
+static QueueHandle_t _messageQueueHandle = NULL;
+
 // Message variable populated by the button ISRs
 static message_id_t nextMessage = INVALID;
 
 // Forward declarations
+void setup_queue();
 void setup_interrupts();
 void start_tasks();
 
@@ -102,6 +104,9 @@ void setup()
         while(1); // Matrix will be unuseable, don't continue
     }*/
 
+    // Init the message queue
+    setup_queue();
+
     // Setup Interrupts
     setup_interrupts();
 
@@ -115,6 +120,20 @@ void setup()
     #endif
 
     SERIAL_PRINTLN("Startup Complete\n");
+}
+
+/**  @brief Function to create the message queue
+*/
+void setup_queue()
+{
+    _messageQueueHandle = xQueueCreate(MESSAGE_QUEUE_SIZE, sizeof(message_t));
+
+    if (_messageQueueHandle == NULL)
+    {
+        SERIAL_PRINTLN("Failed to create the queue!");
+        ASSERT();
+        while(1); // Without a queue the program will be unuseable
+    }
 }
 
 /**  @brief Function to setup interrupts
@@ -159,11 +178,15 @@ void ANT_task(void * pArgs)
         if (ANT.get_bcst_buffer(aucPayload) == 0)
         {
             /* Prepare the message to push to the queue */
-            memcpy(stNextMsg.messageBuffer, aucPayload, sizeof(message_buf_t));
+            memcpy(stNextMsg.messageBuffer, aucPayload, sizeof(message_t));
             stNextMsg.messageId = PRICE;
 
             /* Push it to the queue */
-            messages.write(&stNextMsg);
+            if (xQueueSendToBack(_messageQueueHandle, &stNextMsg, portMAX_DELAY) != pdPASS)
+            {
+                // We failed to write to the queue somehow
+                ASSERT();
+            }
         }
         else
         {
@@ -187,103 +210,109 @@ void matrix_task(void * pArgs)
     while(1)
     {
         /* Wait until we get a message from the ANT thread */
-        while(!messages.read(&stNextMsg));
-
-        /* Process the received message */
-        switch(stNextMsg.messageId)
+        if (xQueueReceive(_messageQueueHandle, &stNextMsg, portMAX_DELAY) == pdPASS)
         {
-            case PRICE:
+            /* Process the received message */
+            switch(stNextMsg.messageId)
             {
-                /* First convert from bytes to float for the ETH price...*/
-                /* Initialized as the cents part */
-                stNextETHPrice.fCurrentETHPrice = (float)stNextMsg.messageBuffer[ANT_MESSAGE_START_IDX] / 100;
-                /* + 1 since we already extracted the cents part */
-                uint8_t ucReadStartIdx = ANT_MESSAGE_START_IDX + 1;
-
-                for(uint8_t i = ucReadStartIdx; i < ANT_STANDARD_DATA_PAYLOAD_SIZE; i++)
+                case PRICE:
                 {
-                    stNextETHPrice.fCurrentETHPrice += (stNextMsg.messageBuffer[i] << ((i - (ucReadStartIdx))*8));
+                    /* First convert from bytes to float for the ETH price...*/
+                    /* Initialized as the cents part */
+                    stNextETHPrice.fCurrentETHPrice = (float)stNextMsg.messageBuffer[ANT_MESSAGE_START_IDX] / 100;
+                    /* + 1 since we already extracted the cents part */
+                    uint8_t ucReadStartIdx = ANT_MESSAGE_START_IDX + 1;
+
+                    for(uint8_t i = ucReadStartIdx; i < ANT_STANDARD_DATA_PAYLOAD_SIZE; i++)
+                    {
+                        stNextETHPrice.fCurrentETHPrice += (stNextMsg.messageBuffer[i] << ((i - (ucReadStartIdx))*8));
+                    }
+
+                    /* Next, pass to the stat tracker to update stats.
+                    If FALSE is returned, continue since we are repeating the same
+                    price and should not let this bubble up to the matrix display
+                    */
+                    if (!stats.write_current_ETH_price(&(stNextETHPrice.fCurrentETHPrice)))
+                    {
+                        continue;
+                    }
+                    break;
                 }
-
-                /* Next, pass to the stat tracker to update stats.
-                   If FALSE is returned, continue since we are repeating the same
-                   price and should not let this bubble up to the matrix display
-                */
-                if (!stats.write_current_ETH_price(&(stNextETHPrice.fCurrentETHPrice)))
+                case RESET:
                 {
+                    /* Reset the ETH price stats */
+                    stats.reset();
+                    SERIAL_PRINTLN("Received Reset\n");
+                    break;
+                }
+                case ON:
+                {
+                    // TODO: If the matrix is off, turn it on
+                    SERIAL_PRINTLN("Received On\n");
+                    break;
+                }
+                case OFF:
+                {
+                    // TODO: If the matrix is on, turn it off
+                    SERIAL_PRINTLN("Received Off\n");
+                    break;
+                }
+                case INVALID:
+                {
+                    /* Should never need to handle the invalid messageID, fallthru to default */
+                }
+                default:
+                {
+                    ASSERT();
                     continue;
                 }
-                break;
             }
-            case RESET:
+
+            /* At this point it is assumed we can read from the stat tracker with updated stats */
+            stats.get_current_ETH_stats(&stNextETHPrice);
+
+            // Print the message we got!
+            SERIAL_PRINT("Last Price: ");
+            SERIAL_PRINTLN(stNextETHPrice.fLastETHPrice);
+            SERIAL_PRINT("Current Price: ");
+            SERIAL_PRINTLN(stNextETHPrice.fCurrentETHPrice);
+            SERIAL_PRINT("Price change: ");
+            switch(stNextETHPrice.ePriceChange)
             {
-                /* Reset the ETH price stats */
-                stats.reset();
-                SERIAL_PRINTLN("Received Reset\n");
-                break;
+                case PRICE_UP:
+                {
+                    SERIAL_PRINTLN("UP");
+                    break;
+                }
+                case PRICE_NEUTRAL:
+                {
+                    SERIAL_PRINTLN("NEUTRAL");
+                    break;
+                }
+                case PRICE_DOWN:
+                {
+                    SERIAL_PRINTLN("DOWN");
+                    break;
+                }
+                case PRICE_INVALID:
+                {
+                    /* Fallthru to default */
+                }
+                default:
+                {
+                    ASSERT();
+                }
             }
-            case ON:
-            {
-                // TODO: If the matrix is off, turn it on
-                SERIAL_PRINTLN("Received On\n");
-                break;
-            }
-            case OFF:
-            {
-                // TODO: If the matrix is on, turn it off
-                SERIAL_PRINTLN("Received Off\n");
-                break;
-            }
-            case INVALID:
-            {
-                /* Should never need to handle the invalid messageID, fallthru to default */
-            }
-            default:
-            {
-                ASSERT();
-                continue;
-            }
+
+            //Serial.print("Refresh FPS = ~");
+            //Serial.println(matrix.getFrameCount());
+            //delay(1000);
         }
-
-        /* At this point it is assumed we can read from the stat tracker with updated stats */
-        stats.get_current_ETH_stats(&stNextETHPrice);
-
-        // Print the message we got!
-        SERIAL_PRINT("Last Price: ");
-        SERIAL_PRINTLN(stNextETHPrice.fLastETHPrice);
-        SERIAL_PRINT("Current Price: ");
-        SERIAL_PRINTLN(stNextETHPrice.fCurrentETHPrice);
-        SERIAL_PRINT("Price change: ");
-        switch(stNextETHPrice.ePriceChange)
+        else
         {
-            case PRICE_UP:
-            {
-                SERIAL_PRINTLN("UP");
-                break;
-            }
-            case PRICE_NEUTRAL:
-            {
-                SERIAL_PRINTLN("NEUTRAL");
-                break;
-            }
-            case PRICE_DOWN:
-            {
-                SERIAL_PRINTLN("DOWN");
-                break;
-            }
-            case PRICE_INVALID:
-            {
-                /* Fallthru to default */
-            }
-            default:
-            {
-                ASSERT();
-            }
+            // We failed to read from the queue somehow
+            ASSERT();
         }
-
-        //Serial.print("Refresh FPS = ~");
-        //Serial.println(matrix.getFrameCount());
-        //delay(1000);
     }
 }
 
@@ -311,7 +340,11 @@ void interrupt_handler_task(void * pArgs)
 
             /* Push the next event into the queue */
             stNextMsg.messageId = nextMessage;
-            messages.write(&stNextMsg);
+            if (xQueueSendToBack(_messageQueueHandle, &stNextMsg, portMAX_DELAY) != pdPASS)
+            {
+                // We failed to write to the queue somehow
+                ASSERT();
+            }
 
             /* Do this so we can be sure we aren't somehow pushing stale data
                into the queue. We protect with the assert above
