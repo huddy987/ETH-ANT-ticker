@@ -38,8 +38,7 @@ static void                            matrix_task(void * pArg);
 static TaskHandle_t                    _interruptHandlerHandle;
 static void                            interrupt_handler_task(void *pArg);
 
-// Variables related to interrupts
-static SemaphoreHandle_t xBinSemaphoreButton = NULL;
+// Message variable populated by the button ISRs
 static message_id_t nextMessage = INVALID;
 
 // Forward declarations
@@ -57,21 +56,24 @@ void reset_IRQHandler()
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     nextMessage = RESET;
-    xSemaphoreGiveFromISR(xBinSemaphoreButton, &xHigherPriorityTaskWoken);
+    vTaskNotifyGiveFromISR(_interruptHandlerHandle, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 void on_IRQHandler()
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     nextMessage = ON;
-    xSemaphoreGiveFromISR(xBinSemaphoreButton, &xHigherPriorityTaskWoken);
+    vTaskNotifyGiveFromISR(_interruptHandlerHandle, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 void off_IRQHandler()
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     nextMessage = OFF;
-    xSemaphoreGiveFromISR(xBinSemaphoreButton, &xHigherPriorityTaskWoken);
+    vTaskNotifyGiveFromISR(_interruptHandlerHandle, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 
@@ -119,15 +121,6 @@ void setup()
 */
 void setup_interrupts()
 {
-    /* Setup binary semaphore used in the interrupts */
-    xBinSemaphoreButton = xSemaphoreCreateBinary();
-
-    if (xBinSemaphoreButton == NULL)
-    {
-        /* One of the semaphores failed to be created (ran out of room on the heap!!) */
-        ASSERT();
-    }
-
     /* Setup buttons as inputs */
     pinMode(BUTTON_RESET, INPUT_PULLUP);
     pinMode(BUTTON_ON, INPUT_PULLUP);
@@ -294,7 +287,9 @@ void matrix_task(void * pArgs)
     }
 }
 
-/** @brief Task which handles receiving interrupts to forward to other threads
+/** @brief Task which handles receiving messages from button ISRs to put them into the message queue.
+ *         Required because the ISRs cannot directly use the queue since there are critical sections inside
+ *         the queue write method.
  */
 void interrupt_handler_task(void * pArgs)
 {
@@ -303,7 +298,10 @@ void interrupt_handler_task(void * pArgs)
 
     while(true)
     {
-        if (xSemaphoreTake(xBinSemaphoreButton, portMAX_DELAY) == pdTRUE)
+        /* Block until we get notified from an ISR. The pdTRUE argument specifies
+           that we will clear the notification to 0 when taking it, essentially treating
+           it like a binary semaphore */
+        if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY))
         {
             /* Check if we are about to push an invalid message */
             if(nextMessage == INVALID)
@@ -319,6 +317,11 @@ void interrupt_handler_task(void * pArgs)
                into the queue. We protect with the assert above
             */
             nextMessage = INVALID;
+        }
+        else
+        {
+            // This should never happen if we are blocking indefinitely
+            ASSERT();
         }
     }
 }
